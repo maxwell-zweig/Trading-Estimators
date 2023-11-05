@@ -94,6 +94,39 @@ class Simulation:
         return hit 
 
     def fit(self, dt):
+        b = 50
+        theta = 20
+        n = 20
+        v = 5
+
+
+        k_beta = 10
+        k_theta = 100
+        k_n = 2
+        k_v = 1
+
+
+        zeta = 10
+        sigma_alpha = 0.01
+        epsilon = 0.05
+        lt = 0
+        alpha = lt
+
+        volume_threshold = 0.8
+
+        print(f'Target Hawkes Decay: {b}')
+        print(f'Target Hawkes Background Rate: {theta}')
+        print(f'Target Hawkes Same-Side Excitation: {n}')
+        print(f'Target Hawkes Opposite-Side Excitation: {v}')
+        print(f'Target K Decay: {k_beta}')
+        print(f'Target K Background: {k_theta}')
+        print(f'Target K Same-Side Excitation: {k_n}')
+        print(f'Target K Opposite-Side Excitation: {k_v}')
+        print(f'Target Alpha Decay: {zeta}')
+        print(f'Target Sigma Alpha: {sigma_alpha}')
+        print(f'Target Epsilon: {epsilon}')
+        print(f'Target background Alpha: {lt}')
+        print(f'Target volume activation threshold: {volume_threshold}')
 
         @nb.jit(nopython=True)
         def generate_fitting_data(dt):
@@ -106,18 +139,19 @@ class Simulation:
             measurement_times = []
             volumes = []
             current_time = 0 
-
+            buy_intensities = []
+            sell_intensities = []
             
-            b = 500
+            b = 50
             theta = 20
-            n = 400
-            v = 70
+            n = 20
+            v = 5
 
 
-            k_beta = 4000
-            k_theta = 10000
-            k_n = 1000
-            k_v = 10
+            k_beta = 10
+            k_theta = 100
+            k_n = 2
+            k_v = 1
 
 
             zeta = 10
@@ -127,8 +161,6 @@ class Simulation:
             alpha = lt
 
             volume_threshold = 0.8
-
-            print(f'Theta Target: {k_theta} Beta Target: {k_beta} N Target: {k_n}, V Target: {k_v}')
 
             buy_rate = theta
             sell_rate = theta
@@ -140,10 +172,16 @@ class Simulation:
             while current_time <= 10:
                 
                 buy_intensity = dt * buy_rate
+
+
                 rec_buy = 0 == np.random.randint(0, int((1 / buy_intensity))) 
 
                 sell_intensity = dt * sell_rate
                 rec_sell = 0 == np.random.randint(0, int((1 / sell_intensity))) 
+
+                buy_intensities.append(buy_rate)
+                sell_intensities.append(sell_rate)
+
 
                 while rec_buy and rec_sell:
                     buy_intensity = dt * buy_rate
@@ -188,9 +226,6 @@ class Simulation:
                 measurement_times.append(current_time)
 
 
-
-
-
                 buy_rate += b * (theta - buy_rate) * dt + n * rec_buy_int + v * rec_sell_int
                 sell_rate += b * (theta - sell_rate) * dt + n * rec_sell_int + v * rec_buy_int
 
@@ -206,12 +241,33 @@ class Simulation:
                 current_time += dt 
 
 
-            return k_plusses, k_minusses, order_rec, measurement_times, buy_rec_times, sell_rec_times, alphas, volumes
+            return k_plusses, k_minusses, order_rec, measurement_times, buy_rec_times, sell_rec_times, alphas, volumes, buy_intensities, sell_intensities
         
-        k_plusses, k_minusses, order_rec, measurement_times, buy_rec_times, sell_rec_times, alphas, volumes = generate_fitting_data(dt)
+        k_plusses, k_minusses, order_rec, measurement_times, buy_rec_times, sell_rec_times, alphas, volumes, bi, si = generate_fitting_data(dt)
         print('done generating')
         plt.plot(alphas)
+        plt.title("Sample Alpha Realization")
+        plt.xlabel("Time")
+        plt.ylabel("Alpha Value")
         plt.show()
+
+        plt.plot(np.array(k_plusses), label='k plus')
+        plt.plot(np.array(k_minusses), label='k minus')
+        plt.title("Sample K Realization")
+        plt.xlabel("Time")
+        plt.ylabel("K Value")
+        plt.legend()
+        plt.show()
+
+
+        plt.plot(np.array(bi), label='True BI')
+        plt.plot(np.array(si), label='True SI')
+        plt.title("True Buy/Sell Intensities")
+        plt.xlabel("Time")
+        plt.ylabel("Intensity")
+        plt.legend()
+        plt.show()
+        
         return np.array(k_plusses), np.array(k_minusses), np.array(order_rec), np.array(measurement_times), np.array(buy_rec_times), np.array(sell_rec_times), np.array(alphas), np.array(volumes)
     
 
@@ -246,13 +302,33 @@ class SupEstimator():
         self.init_alpha = alpha.MLE(self.oR, self.al, self.mt)
         self.init_k = fill_prob.MLE(self.kp, self.km, self.oR, self.mt)
 
+        print(f'Computing initial guesses w/o volume threshold')
+
         self.alpha_x0 = self.init_alpha.maxim()
         self.hawkes_x0 = self.init_hawkes.maxim_linear()
         self.k_x0 = self.init_k.maxim_linear()
         self.v_guessx0 = self.initial_threshold_guess()
 
-        print(self.hawkes_x0, self.alpha_x0, self.k_x0, self.v_guessx0)
+        print(f'')
 
+        print(f'Initial Estimated Hawkes Decay: {self.hawkes_x0[0]}')
+        print(f'Initial Estimated Hawkes Background: {self.hawkes_x0[1]}')
+        print(f'Initial Estimated Hawkes Same-Side Excitation: {self.hawkes_x0[2]}')
+        print(f'Initial Estimated Hawkes Oppposite-Side Excitation: {self.hawkes_x0[3]}')
+        print(f'Initial Estimated Alpha Reversion: {self.alpha_x0[0]}')
+        print(f'Initial Estimated Alpha Sigma: {np.sqrt(self.alpha_x0[1])}')
+        print(f'Initial Estimated Alpha Long Term: {self.alpha_x0[2]}')
+        print(f'Initial Estimated Alpha Epsilon: {self.alpha_x0[3]}')
+        print(f'Initial Estimated K Decay: {self.k_x0[0]}')
+        print(f'Initial Estimated K Background: {self.k_x0[1]}')
+        print(f'Initial Estimated K Same-Side Exicitation: {self.k_x0[2]}')
+        print(f'Initial Estimated K Opposite-Side Excitation: {self.k_x0[3]}')
+        print(f'Initial Estimated Threshold Final: {self.v_guessx0}')
+
+        print(f'')
+
+        print(f'Computing threshold guess w/ our initial parameter guesses')
+        
         self.threshold_final = self.v_guessx0[0]
 
         self.order_rec_f = np.copy(self.oR)
@@ -260,6 +336,8 @@ class SupEstimator():
         
         trade_volumes = self.volumes[self.volumes > 0]
         influential[trade_volumes < self.threshold_final] = 0 
+
+        print(f'Computing our final parameter estimations w/ calibrated influential threshold')
 
 
         alpha_helper_f = alpha.MLE(self.order_rec_f, self.al, self.mt)
@@ -270,12 +348,27 @@ class SupEstimator():
         self.hawkes_final = hawkes_helper_f.maxim_linear()
         self.k_final = k_helper_f.maxim_linear()
 
-        print(self.hawkes_final, self.alpha_final, self.k_final)
+        print(f'')
+
+        print(f'Estimated Hawkes Decay: {self.hawkes_final[0]}')
+        print(f'Estimated Hawkes Background: {self.hawkes_final[1]}')
+        print(f'Estimated Hawkes Same-Side Excitation: {self.hawkes_final[2]}')
+        print(f'Estimated Hawkes Oppposite-Side Excitation: {self.hawkes_final[3]}')
+        print(f'Estimated Alpha Reversion: {self.alpha_final[0]}')
+        print(f'Estimated Alpha Sigma: {np.sqrt(self.alpha_final[1])}')
+        print(f'Estimated Alpha Long Term: {self.alpha_final[2]}')
+        print(f'Estimated Alpha Epsilon: {self.alpha_final[3]}')
+        print(f'Estimated K Decay: {self.k_final[0]}')
+        print(f'Estimated K Background: {self.k_final[1]}')
+        print(f'Estimated K Same-Side Exicitation: {self.k_final[2]}')
+        print(f'Estimated K Opposite-Side Excitation: {self.k_final[3]}')
+        print(f'Estimated Threshold Final: {self.threshold_final}')
+
+
 
 
 
     def sup_estimation(self):
-        print('going')
         def loss(x):
 
             cur_time = time.time()
@@ -305,7 +398,6 @@ class SupEstimator():
             return hawkes_loss + alpha_loss + log_k_loss
 
         res = optim.minimize(fun=loss, x0=[self.v_guessx0[0], self.k_x0[0], self.k_x0[1], self.k_x0[2], self.k_x0[3], self.alpha_x0[0], self.alpha_x0[2], self.alpha_x0[1], self.alpha_x0[3], self.hawkes_x0[0], self.hawkes_x0[1], self.hawkes_x0[2], self.hawkes_x0[3]], bounds=((0, np.max(self.volumes)), (0, np.inf), (0, np.inf), (0, np.inf), (0, np.inf), (0, np.inf), (-np.inf, np.inf), (0, np.inf), (0, np.inf), (0, np.inf), (0, np.inf), (0, np.inf), (0, np.inf)), method="L-BFGS-B")
-        print(res.x)
 
     def initial_threshold_guess(self):
         def threshold_loss(thresh):

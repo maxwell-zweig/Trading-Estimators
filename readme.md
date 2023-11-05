@@ -1,0 +1,1 @@
+You can find sample code for fitting the joint maximum-likelihood esimtator that I describe on my personal website here. Run supremum_model.py for a demonstration, and feel free to browse the code. 

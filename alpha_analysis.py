@@ -175,7 +175,6 @@ class Simulation:
 
 class MLE:
     def __init__(self, events, states, measurement_times):
-      #  self.dt = dt
         self.events = events
         self.states = states
         self.measurement_times = measurement_times
@@ -243,8 +242,6 @@ class MLE:
                                                                     statesall2_wsm_= np.sum(self.cur_states * self.cur_states * self.delta_times), 
                                                                     total_time = self.measurement_times[-1] - self.measurement_times[0])
                                                                 
-#        print(k, lt_f, variance, epsilon)
-
         return k, variance, lt_f, epsilon
 
     '''
