@@ -3,3 +3,4 @@ You can find sample code for fitting the joint maximum-likelihood esimtator that
 ![Alt Text](/Figure_1.png?raw=true "Alpha Realization")
 ![Alt Text](/buy_sell.png?raw=true "Lambda Realization")
 ![Alt Text](/k_estimator.png?raw=true "K Realization")
+

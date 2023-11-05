@@ -479,7 +479,7 @@ class MLE():
         theta_init = (np.mean(self.k_minusses) + np.mean(self.k_plusses)) / 2
         x0 = [1, theta_init, 1, 1]
         args_tuple = (self.k_plusses, self.k_minusses, self.measurement_times, self.order_rec)
-        res = optim.minimize(linear_loss, x0=x0, args=args_tuple, method="L-BFGS-B", bounds=((0, np.inf),(0, np.inf),(0, np.inf),(0, np.inf)))
+        res = optim.minimize(linear_loss, x0=x0, args=args_tuple, method="L-BFGS-B", bounds=((0, np.inf),(0, np.inf),(0, np.inf),(0, np.inf)), options={'disp' :False})
        # print(res.x)
 
 
